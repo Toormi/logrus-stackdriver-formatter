@@ -60,9 +60,10 @@ type entry struct {
 
 // Formatter implements Stackdriver formatting for logrus.
 type Formatter struct {
-	Service   string
-	Version   string
-	StackSkip []string
+	Service    string
+	Version    string
+	StackSkip  []string
+	Nanosecond bool
 }
 
 // Option lets you configure the Formatter.
@@ -86,6 +87,13 @@ func WithVersion(v string) Option {
 func WithStackSkip(v string) Option {
 	return func(f *Formatter) {
 		f.StackSkip = append(f.StackSkip, v)
+	}
+}
+
+// WithNanosecond lets you configure the nanosecond timestamp used for error reporting.
+func WithNanosecond(v bool) Option {
+	return func(f *Formatter) {
+		f.Nanosecond = v
 	}
 }
 
@@ -134,7 +142,6 @@ func (f *Formatter) Format(e *logrus.Entry) ([]byte, error) {
 	severity := levelsToSeverity[e.Level]
 
 	ee := entry{
-
 		Message:  e.Message,
 		Severity: severity,
 		Context: &context{
@@ -143,7 +150,11 @@ func (f *Formatter) Format(e *logrus.Entry) ([]byte, error) {
 	}
 
 	if !skipTimestamp {
-		ee.Timestamp = time.Now().UTC().Format(time.RFC3339)
+		if f.Nanosecond {
+			ee.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+		} else {
+			ee.Timestamp = time.Now().UTC().Format(time.RFC3339)
+		}
 	}
 
 	switch severity {
